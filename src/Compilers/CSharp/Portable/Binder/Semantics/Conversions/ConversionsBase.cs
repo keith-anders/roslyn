@@ -1298,7 +1298,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 {
                     for (int p = 0; p < delegateParameters.Length; ++p)
                     {
-                        if (delegateParameters[p].RefKind != RefKind.None)
+                        if (delegateParameters[p].RefKind != anonymousFunction.RefKind(p))
                         {
                             return LambdaConversionResult.RefInImplicitlyTypedLambda;
                         }

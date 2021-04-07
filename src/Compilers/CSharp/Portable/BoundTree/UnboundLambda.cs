@@ -1238,7 +1238,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         public override RefKind RefKind(int index)
         {
-            Debug.Assert(0 <= index && index < _parameterTypesWithAnnotations.Length);
+            Debug.Assert(0 <= index && (_parameterRefKinds.IsDefault || index < _parameterRefKinds.Length));
             return _parameterRefKinds.IsDefault ? Microsoft.CodeAnalysis.RefKind.None : _parameterRefKinds[index];
         }
 

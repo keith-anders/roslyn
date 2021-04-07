@@ -98,10 +98,7 @@ class C {
                                                     N(SyntaxKind.Parameter);
                                                     {
                                                         N(SyntaxKind.OutKeyword);
-                                                        M(SyntaxKind.IdentifierName); // parameter type
-                                                        {
-                                                            M(SyntaxKind.IdentifierToken);
-                                                        }
+                                                        // parameter type not required
                                                         M(SyntaxKind.IdentifierToken); // parameter name
                                                     }
                                                     M(SyntaxKind.CloseParenToken);

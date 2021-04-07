@@ -73,6 +73,252 @@ class C
         }
 
         [Fact]
+        public void ImplicitlyTypedRefkindParameterInStaticLambda()
+        {
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(string input, out int value);",
+                @"TryParseInt t = static (i, out value) => value = 42;
+                t(null, out v);", "42", SyntaxKind.OutKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(string input, ref int value);",
+                @"TryParseInt t = static (i, ref value) => value = 42;
+                t(null, ref v);", "42", SyntaxKind.RefKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(string input, in int value);",
+                @"TryParseInt t = static (i, in value) => Write(value);
+                t(null, in v);", "13 13", SyntaxKind.InKeyword);
+        }
+
+        [Fact]
+        public void ImplicitlyTypedUnparenthesizedRefkindParameterInStaticLambda()
+        {
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(out int value);",
+                @"TryParseInt t = static out value => value = 42;
+                t(out v);", "42", SyntaxKind.OutKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(ref int value);",
+                @"TryParseInt t = static ref value => value = 42;
+                t(ref v);", "42", SyntaxKind.RefKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(in int value);",
+                @"TryParseInt t = static in value => Write(value);
+                t(in v);", "13 13", SyntaxKind.InKeyword);
+        }
+
+        [Fact]
+        public void ImplicitlyTypedRefkindParameterInNoninitialPosition()
+        {
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(string input, out int value);",
+                @"TryParseInt t = (i, out value) => value = 42;
+                t(null, out v);", "42", SyntaxKind.OutKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(string input, ref int value);",
+                @"TryParseInt t = (i, ref value) => value = 42;
+                t(null, ref v);", "42", SyntaxKind.RefKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(string input, in int value);",
+                @"TryParseInt t = (i, in value) => Write(value);
+                t(null, in v);", "13 13", SyntaxKind.InKeyword);
+        }
+
+        [Fact]
+        public void ImplicitlyTypedRefkindParameterInInitialPosition()
+        {
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(out int value);",
+                @"TryParseInt t = (out value) => value = 42;
+                t(out v);", "42", SyntaxKind.OutKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(ref int value);",
+                @"TryParseInt t = (ref value) => value = 42;
+                t(ref v);", "42", SyntaxKind.RefKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(in int value);",
+                @"TryParseInt t = (in value) => Write(value);
+                t(in v);", "13 13", SyntaxKind.InKeyword);
+        }
+
+        [Fact]
+        public void ImplicitlyTypedRefkindParameterUnparenthesized()
+        {
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(out int value);",
+                @"TryParseInt t = out value => value = 42;
+                t(out v);", "42", SyntaxKind.OutKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(ref int value);",
+                @"TryParseInt t = ref value => value = 42;
+                t(ref v);", "42", SyntaxKind.RefKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(in int value);",
+                @"TryParseInt t = in value => Write(value);
+                t(in v);", "13 13", SyntaxKind.InKeyword);
+        }
+
+        [Fact]
+        public void ImplicitlyTypedRefkindParameterWithAsyncIdentifier()
+        {
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(out int value);",
+                @"TryParseInt t = out async => async = 42;
+                t(out v);", "42", SyntaxKind.OutKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(ref int value);",
+                @"TryParseInt t = ref async => async = 42;
+                t(ref v);", "42", SyntaxKind.RefKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(in int value);",
+                @"TryParseInt t = in async => Write(async);
+                t(in v);", "13 13", SyntaxKind.InKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(out int value);",
+                @"TryParseInt t = static out async => async = 42;
+                t(out v);", "42", SyntaxKind.OutKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(ref int value);",
+                @"TryParseInt t = static ref async => async = 42;
+                t(ref v);", "42", SyntaxKind.RefKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(in int value);",
+                @"TryParseInt t = static in async => Write(async);
+                t(in v);", "13 13", SyntaxKind.InKeyword);
+        }
+
+        [Fact]
+        public void ImplicitlyTypedRefkindParameterInGenericDelegate()
+        {
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParse<T>(string input, out T value);",
+                @"TryParse<int> t = (i, out value) => value = 42;
+                t(null, out v);", "42", SyntaxKind.OutKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParse<T>(string input, ref T value);",
+                @"TryParse<int> t = (i, ref value) => value = 42;
+                t(null, ref v);", "42", SyntaxKind.RefKeyword);
+
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParse<T>(string input, in T value);",
+                @"TryParse<int> t = (i, in value) => Write(value);
+                t(null, in v);", "13 13", SyntaxKind.InKeyword);
+        }
+
+        [Fact]
+        public void ImplicitlyTypedRefkindParameterStillRequiresRefkindKeyword()
+        {
+            TestImplicitlyTypedRefkindParameter(@"delegate bool TryParseInt(string input, out int value);",
+                @"TryParseInt t = (i, value) => true;",
+                // (12,21): error CS1676: Parameter 2 must be declared with the 'out' keyword
+                // TryParseInt t = (i, value) => {
+                Diagnostic(ErrorCode.ERR_BadParamRef, "value").WithArguments("2", "out").WithLocation(12, 21));
+
+            TestImplicitlyTypedRefkindParameter(@"delegate bool TryParseInt(string input, ref int value);",
+                @"TryParseInt t = (i, value) => true;",
+                // (12,21): error CS1676: Parameter 2 must be declared with the 'ref' keyword
+                // TryParseInt t = (i, value) => {
+                Diagnostic(ErrorCode.ERR_BadParamRef, "value").WithArguments("2", "ref").WithLocation(12, 21));
+
+            TestImplicitlyTypedRefkindParameter(@"delegate bool TryParseInt(string input, in int value);",
+                @"TryParseInt t = (i, value) => true;",
+                // (12,21): error CS1676: Parameter 2 must be declared with the 'in' keyword
+                // TryParseInt t = (i, value) => {
+                Diagnostic(ErrorCode.ERR_BadParamRef, "value").WithArguments("2", "in").WithLocation(12, 21));
+        }
+
+        [Fact]
+        public void ImplicitlyTypedOutParameterRequiresAssignment()
+        {
+            TestImplicitlyTypedRefkindParameter(@"delegate bool TryParseInt(string input, out int value);",
+                @"TryParseInt t = (i, out value) => true;",
+                // (15,21): error CS0177: The out parameter 'value' must be assigned to before control leaves the current method
+                Diagnostic(ErrorCode.ERR_ParamUnassigned, "true").WithArguments("value").WithLocation(12, 35));
+        }
+
+        [Fact]
+        public void ImplicitlyTypedInParameterEnforcesReadonly()
+        {
+            TestImplicitlyTypedRefkindParameter(@"delegate void TryParseInt(string input, in int value);",
+                @"TryParseInt t = (i, in value) => value = 42;",
+                // (13,21): error CS8331: Cannot assign to variable 'in int' because it is a readonly variable
+                Diagnostic(ErrorCode.ERR_AssignReadonlyNotField, "value").WithArguments("variable", "in int").WithLocation(12, 34)
+                );
+        }
+
+        [Fact]
+        public void RefkindParameterOutputsSameILWithImplicitOrExplicitTypes()
+        {
+            static string getIL(LambdaTests tests, string delegateDeclaration, string lambdaText, string declaration)
+            {
+                string code = @"
+using static System.Console;
+" + delegateDeclaration + @"
+class C
+{
+    public static void Main(string[] args)
+    {" + string.Format(lambdaText, declaration) + @"
+    }
+}";
+                var tree = SyntaxFactory.ParseSyntaxTree(code);
+                var compilation = CreateCompilation(tree, options: TestOptions.DebugExe.WithConcurrentBuild(false));
+                var verifier = tests.CompileAndVerify(compilation);
+                return verifier.VisualizeTypeIL("C");
+            }
+
+            static void test(LambdaTests tests, string delegateDeclaration, string lambdaText, string @implicit, string @explicit)
+            {
+                string ilImplicit = getIL(tests, delegateDeclaration, lambdaText, @implicit);
+                string ilExplicit = getIL(tests, delegateDeclaration, lambdaText, @explicit);
+
+                AssertEx.EqualOrDiff(ilExplicit, ilImplicit);
+            }
+
+            test(this, @"delegate void TryParse(out int i);", @"TryParse t = {0} => i = 1;", @"out i", @"(out int i)");
+            test(this, @"delegate void TryParse(ref int i);", @"TryParse t = {0} => i = 1;", @"ref i", @"(ref int i)");
+            test(this, @"delegate void TryParse(in int i);", @"TryParse t = {0} => Write(i);", @"in i", @"(in int i)");
+
+            test(this, @"delegate void TryParse(out int i);", @"TryParse t = static {0} => i = 1;", @"out i", @"(out int i)");
+            test(this, @"delegate void TryParse(ref int i);", @"TryParse t = static {0} => i = 1;", @"ref i", @"(ref int i)");
+            test(this, @"delegate void TryParse(in int i);", @"TryParse t = static {0} => Write(i);", @"in i", @"(in int i)");
+        }
+
+        private void TestImplicitlyTypedRefkindParameter(string delegateDeclaration, string lambdaText, string expectedOutput, SyntaxKind modifier)
+        {
+            var tree = GetSyntaxTreeForImplicitlyTypedRefkindParameter(delegateDeclaration, lambdaText);
+            var compilation = CreateCompilation(tree, options: TestOptions.DebugExe.WithConcurrentBuild(false));
+            compilation.VerifyDiagnostics();
+            CompileAndVerify(compilation, expectedOutput: expectedOutput);
+
+            var expr = tree.GetCompilationUnitRoot().DescendantNodes().OfType<LambdaExpressionSyntax>().Single();
+            if (expr is ParenthesizedLambdaExpressionSyntax pExpr)
+                Assert.True(pExpr.ParameterList.Parameters.Last().Modifiers.Any(modifier));
+            else if (expr is SimpleLambdaExpressionSyntax sExpr)
+                Assert.True(sExpr.Parameter.Modifiers.Any(modifier));
+            else
+                AssertEx.Fail("Should parse as simple or parenthesized lambda");
+        }
+
+        private void TestImplicitlyTypedRefkindParameter(string delegateDeclaration, string lambdaText, params DiagnosticDescription[] diagnostics)
+        {
+            var tree = GetSyntaxTreeForImplicitlyTypedRefkindParameter(delegateDeclaration, lambdaText);
+            var compilation = CreateCompilation(tree, options: TestOptions.DebugExe.WithConcurrentBuild(false));
+            compilation.VerifyDiagnostics(diagnostics);
+        }
+
+        private static SyntaxTree GetSyntaxTreeForImplicitlyTypedRefkindParameter(string delegateDeclaration, string lambdaText)
+        {
+            string code = @"
+using static System.Console;
+" + delegateDeclaration + @"
+class C
+{
+    private static void WriteSpace()
+        => Write("" "");
+
+    public static void Main(string[] args)
+    {
+        int v = 13;
+" + lambdaText + @"
+        WriteSpace();
+        Write(v);
+    }
+}";
+            return SyntaxFactory.ParseSyntaxTree(code);
+        }
+
+        [Fact]
         public void TestLambdaErrors01()
         {
             var comp = CreateCompilationWithMscorlib40AndSystemCore(@"

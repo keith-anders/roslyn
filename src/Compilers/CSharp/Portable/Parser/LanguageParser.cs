@@ -4780,7 +4780,8 @@ tryAgain:
 
                     SyntaxToken refKeyword = null;
                     if (isLocal && !isConst &&
-                        this.CurrentToken.Kind == SyntaxKind.RefKeyword)
+                        this.CurrentToken.Kind == SyntaxKind.RefKeyword &&
+                        !this.IsPossibleLambdaExpression(Precedence.Lambda))
                     {
                         refKeyword = this.EatToken();
                         refKeyword = CheckFeatureAvailability(refKeyword, MessageID.IDS_FeatureRefLocalsReturns);
@@ -10375,8 +10376,17 @@ tryAgain:
                 case SyntaxKind.DelegateKeyword:
                     return this.ParseAnonymousMethodExpression();
                 case SyntaxKind.RefKeyword:
-                    // ref is not expected to appear in this position.
-                    return this.AddError(ParsePossibleRefExpression(), ErrorCode.ERR_InvalidExprTerm, SyntaxFacts.GetText(tk));
+                case SyntaxKind.OutKeyword:
+                case SyntaxKind.InKeyword:
+                    if (this.IsPossibleLambdaExpression(precedence))
+                    {
+                        return this.ParseLambdaExpression();
+                    }
+                    else if (tk == SyntaxKind.RefKeyword)
+                    {
+                        return this.AddError(ParsePossibleRefExpression(), ErrorCode.ERR_InvalidExprTerm, SyntaxFacts.GetText(tk));
+                    }
+                    goto default;
                 default:
                     // check for intrinsic type followed by '.'
                     if (IsPredefinedType(tk))
@@ -10987,6 +10997,7 @@ tryAgain:
                     // skip  identifiers commas and predefined types in any combination for error recovery
                     if (tk.Kind != SyntaxKind.IdentifierToken
                         && !SyntaxFacts.IsPredefinedType(tk.Kind)
+                        && !IsValidLambdaParameterModifierKind(tk.Kind)
                         && tk.Kind != SyntaxKind.CommaToken
                         && (this.IsInQuery || !IsTokenQueryContextualKeyword(tk)))
                     {
@@ -11339,6 +11350,7 @@ tryAgain:
             // Only call into this if after `static` or after a legal identifier.
             Debug.Assert(
                 this.CurrentToken.Kind == SyntaxKind.StaticKeyword ||
+                IsValidLambdaParameterModifierKind(this.CurrentToken.Kind) ||
                 this.IsTrueIdentifier(this.CurrentToken));
             if (precedence > Precedence.Lambda)
             {
@@ -11352,6 +11364,8 @@ tryAgain:
 
             int peekIndex;
             bool seenStatic;
+
+            // Handle 'static' and 'async static'. Only advance the peek if static is seen.
             if (this.CurrentToken.Kind == SyntaxKind.StaticKeyword)
             {
                 peekIndex = 1;
@@ -11371,9 +11385,9 @@ tryAgain:
 
             if (this.PeekToken(peekIndex).Kind == SyntaxKind.EqualsGreaterThanToken)
             {
-                // We only got into IsPossibleLambdaExpression if we saw 'static' or an identifier.
-                // So if we're now on => then we must have been on 'static' in order to have moved
-                // past those.
+                // The peek was only advanced if static was seen.
+                // So if we're now on => then we must have advanced and therefore
+                // must have been on 'static'.
                 Contract.Requires(seenStatic);
 
                 // 1. `static =>`
@@ -11381,6 +11395,16 @@ tryAgain:
 
                 // This is an error case, but we have enough code in front of us to be certain
                 // the user was trying to write a static lambda.
+                return true;
+            }
+
+            if (IsValidLambdaParameterModifierKind(this.PeekToken(peekIndex).Kind) &&
+                SyntaxKind.IdentifierToken == this.PeekToken(peekIndex + 1).Kind &&
+                SyntaxKind.EqualsGreaterThanToken == this.PeekToken(peekIndex + 2).Kind)
+            {
+                // 1. `ref a => ...`
+                // 2. `static ref a => ...`
+                // 3. `async static ref a => ...`
                 return true;
             }
 
@@ -11395,9 +11419,9 @@ tryAgain:
 
             if (this.PeekToken(peekIndex).Kind == SyntaxKind.OpenParenToken)
             {
-                // We only got into IsPossibleLambdaExpression if we saw 'static' or an identifier.
-                // So if we're now on ( then we must have been on 'static' in order to have moved
-                // past those.
+                // The peek was only advanced if static was seen.
+                // So if we're now on ( then we must have advanced and therefore
+                // must have been on 'static'.
                 Contract.Requires(seenStatic);
 
                 // 1. `static (...
@@ -12292,12 +12316,15 @@ tryAgain:
                 }
                 else
                 {
+                    SyntaxToken modifierToken = null;
+                    if (IsValidLambdaParameterModifierKind(CurrentToken.Kind))
+                        modifierToken = this.EatToken();
+
                     var name = this.ParseIdentifierToken();
                     var arrow = this.EatToken(SyntaxKind.EqualsGreaterThanToken);
                     arrow = CheckFeatureAvailability(arrow, MessageID.IDS_FeatureLambda);
-
                     var parameter = _syntaxFactory.Parameter(
-                        attributeLists: default, modifiers: default,
+                        attributeLists: default, modifiers: modifierToken,
                         type: null, identifier: name, @default: null);
                     var (block, expression) = ParseLambdaBody();
 
@@ -12368,6 +12395,20 @@ tryAgain:
             }
         }
 
+        /// <summary>
+        /// Indicates whether a given SyntaxKind
+        /// is a valid modifier for an implicitly
+        /// typed lambda parameter.
+        /// </summary>
+        private static bool IsValidLambdaParameterModifierKind(SyntaxKind kind)
+        {
+            return kind switch
+            {
+                SyntaxKind.OutKeyword or SyntaxKind.InKeyword or SyntaxKind.RefKeyword => true,
+                _ => false,
+            };
+        }
+
         private bool IsPossibleLambdaParameter()
         {
             switch (this.CurrentToken.Kind)
@@ -12409,13 +12450,13 @@ tryAgain:
             TypeSyntax paramType = null;
             SyntaxListBuilder modifiers = _pool.Allocate();
 
-            if (ShouldParseLambdaParameterType(hasModifier))
+            if (hasModifier)
             {
-                if (hasModifier)
-                {
-                    ParseParameterModifiers(modifiers);
-                }
+                ParseParameterModifiers(modifiers);
+            }
 
+            if (ShouldParseLambdaParameterType(modifiers))
+            {
                 paramType = ParseType(ParseTypeMode.Parameter);
             }
 
@@ -12425,10 +12466,10 @@ tryAgain:
             return parameter;
         }
 
-        private bool ShouldParseLambdaParameterType(bool hasModifier)
+        private bool ShouldParseLambdaParameterType(SyntaxListBuilder modifiers)
         {
-            // If we have "ref/out/in/params" always try to parse out a type.
-            if (hasModifier)
+            // If we have "params" always try to parse out a type.
+            if (modifiers.Any((int)SyntaxKind.ParamsKeyword))
             {
                 return true;
             }

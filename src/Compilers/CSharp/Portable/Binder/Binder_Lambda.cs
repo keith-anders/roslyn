@@ -56,6 +56,11 @@ namespace Microsoft.CodeAnalysis.CSharp
                     hasSignature = true;
                     var simple = (SimpleLambdaExpressionSyntax)syntax;
                     namesBuilder.Add(simple.Parameter.Identifier.ValueText);
+                    // Since there's no separate parameter list to parse below,
+                    // we have to parse the ref-kind modifier (if any) here.
+                    var refKindsBuilder = ArrayBuilder<RefKind>.GetInstance();
+                    refKindsBuilder.Add(getRefKind(diagnostics, simple.Parameter));
+                    refKinds = refKindsBuilder.ToImmutableAndFree();
                     break;
                 case SyntaxKind.ParenthesizedLambdaExpression:
                     // (T x, U y) => ...
@@ -122,7 +127,6 @@ namespace Microsoft.CodeAnalysis.CSharp
 
                     var typeSyntax = p.Type;
                     TypeWithAnnotations type = default;
-                    var refKind = RefKind.None;
 
                     if (typeSyntax == null)
                     {
@@ -131,38 +135,10 @@ namespace Microsoft.CodeAnalysis.CSharp
                     else
                     {
                         type = BindType(typeSyntax, diagnostics);
-                        foreach (var modifier in p.Modifiers)
-                        {
-                            switch (modifier.Kind())
-                            {
-                                case SyntaxKind.RefKeyword:
-                                    refKind = RefKind.Ref;
-                                    allValue = false;
-                                    break;
-
-                                case SyntaxKind.OutKeyword:
-                                    refKind = RefKind.Out;
-                                    allValue = false;
-                                    break;
-
-                                case SyntaxKind.InKeyword:
-                                    refKind = RefKind.In;
-                                    allValue = false;
-                                    break;
-
-                                case SyntaxKind.ParamsKeyword:
-                                    // This was a parse error in the native compiler; 
-                                    // it is a semantic analysis error in Roslyn. See comments to
-                                    // changeset 1674 for details.
-                                    Error(diagnostics, ErrorCode.ERR_IllegalParams, p);
-                                    break;
-
-                                case SyntaxKind.ThisKeyword:
-                                    Error(diagnostics, ErrorCode.ERR_ThisInBadContext, modifier);
-                                    break;
-                            }
-                        }
                     }
+
+                    var refKind = getRefKind(diagnostics, p);
+                    allValue = allValue && (refKind == RefKind.None);
 
                     namesBuilder.Add(p.Identifier.ValueText);
                     typesBuilder.Add(type);
@@ -209,6 +185,29 @@ namespace Microsoft.CodeAnalysis.CSharp
                 }
 
                 return discardsBuilder.ToImmutableAndFree();
+            }
+
+            static RefKind getRefKind(BindingDiagnosticBag diagnostics, ParameterSyntax p)
+            {
+                foreach (var modifier in p.Modifiers)
+                {
+                    switch (modifier.Kind())
+                    {
+                        case SyntaxKind.RefKeyword: return RefKind.Ref;
+                        case SyntaxKind.OutKeyword: return RefKind.Out;
+                        case SyntaxKind.InKeyword: return RefKind.In;
+                        case SyntaxKind.ParamsKeyword:
+                            // This was a parse error in the native compiler;
+                            // it is a semantic analysis error in Roslyn. See comments to
+                            // changeset 1674 for details.
+                            Error(diagnostics, ErrorCode.ERR_IllegalParams, p);
+                            break;
+                        case SyntaxKind.ThisKeyword:
+                            Error(diagnostics, ErrorCode.ERR_ThisInBadContext, modifier);
+                            break;
+                    }
+                }
+                return RefKind.None;
             }
         }
 
